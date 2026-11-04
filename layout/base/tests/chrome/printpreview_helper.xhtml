@@ -2248,9 +2248,61 @@ async function runTest74() {
   is(clonedInner.auto, originalInner.auto, "inner auto matches");
 
   await SpecialPowers.popPrefEnv();
-  finish();
+
+  requestAnimationFrame(() => setTimeout(runTest75));
 }
 
+// Test that anonymous content marked to be included in static clones
+// is indeed cloned.
+async function runTest75() {
+  function findAnonymousContent(node, id) {
+    if (node.nodeType === 1 && node.id === id) {
+      return node;
+    }
+
+    for (const child of SpecialPowers.InspectorUtils.getChildrenForNode(
+      node,
+      true,
+      false
+    )) {
+      let found = findAnonymousContent(child, id);
+      if (found) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  const read = (window) => ({
+    expected: findAnonymousContent(window.document, 'expected'),
+    unexpected: findAnonymousContent(window.document, 'unexpected'),
+  });
+
+  const source = SpecialPowers.wrap(frameElts[0].contentDocument);
+
+  const expectedDiv = source.createElement('div');
+  expectedDiv.setAttribute('id', 'expected');
+  const cloneableAnonymousContent = source.insertAnonymousContent(
+    { includeInStaticClones: true },
+  );
+  cloneableAnonymousContent.root.append(expectedDiv);
+
+  const unexpectedDiv = source.createElement('div');
+  unexpectedDiv.setAttribute('id', 'unexpected');
+  const nonCloneableAnonymousContent = source.insertAnonymousContent();
+  nonCloneableAnonymousContent.root.append(unexpectedDiv);
+
+  await printpreview();
+  const cloned = read(gPrintPreviewWindow);
+  exitprintpreview();
+
+  ok(cloned.expected, "cloneable div exists");
+  ok(cloned.expected.isEqualNode(expectedDiv), "clonable div is an exact copy");
+  is(cloned.unexpected, null, "not clonable div is not cloned")
+
+  finish();
+}
 
 ]]></script>
 <table style="border: 1px solid black;" xmlns="http://www.w3.org/1999/xhtml">

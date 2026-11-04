@@ -9317,6 +9317,11 @@ void Document::CreateCustomContentContainerIfNeeded() {
   container->SetAttr(kNameSpaceID_None, nsGkAtoms::_class,
                      u"moz-custom-content-container"_ns, false,
                      IsKnownNewAttr::Yes);
+
+  if (IsStaticDocument()) {
+    container->ClassList()->Add(u"moz-print"_ns, IgnoreErrors());
+  }
+
   nsAutoScriptBlocker scriptBlocker;
   BindContext context(*root, BindContext::ForNativeAnonymous);
   if (NS_WARN_IF(NS_FAILED(container->BindToTree(context, *root)))) {
@@ -9336,8 +9341,9 @@ void Document::CreateCustomContentContainerIfNeeded() {
 }
 
 already_AddRefed<AnonymousContent> Document::InsertAnonymousContent(
-    ErrorResult& aRv) {
-  RefPtr<AnonymousContent> anonContent = AnonymousContent::Create(*this);
+    const AnonymousContentOptions& aOptions, ErrorResult& aRv) {
+  RefPtr<AnonymousContent> anonContent =
+      AnonymousContent::Create(*this, aOptions.mIncludeInStaticClones);
   if (!anonContent) {
     aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
     return nullptr;
@@ -13427,6 +13433,30 @@ nsresult Document::CloneDocHelper(Document* clone) const {
     // once, so we don't do that here. However, we do want to act as if there is
     // a script handling object. So we set mHasHadScriptHandlingObject.
     clone->mHasHadScriptHandlingObject = true;
+
+    // Cloning needs to happen after setting mHasHadScriptHandlingObject,
+    // otherwise nsINode::CloneAndAdopt rejects importing from a scriptable
+    // source by setting NS_ERROR_UNEXPECTED and returning null.
+    BooleanOrImportNodeOptions cloneOptions;
+    cloneOptions.SetAsBoolean() = true;
+
+    for (auto& content : mAnonymousContents) {
+      if (!content->IsIncludedInStaticClones()) {
+        continue;
+      }
+
+      AnonymousContentOptions acOptions;
+      acOptions.mIncludeInStaticClones = true;
+      RefPtr destination =
+          clone->InsertAnonymousContent(acOptions, IgnoreErrors());
+
+      for (nsIContent* child = content->Root()->GetFirstChild(); child;
+           child = child->GetNextSibling()) {
+        RefPtr clonedChild =
+            clone->ImportNode(*child, cloneOptions, IgnoreErrors());
+        destination->Root()->AppendChild(*clonedChild, IgnoreErrors());
+      }
+    }
   } else if (scriptObject) {
     clone->SetScriptHandlingObject(scriptObject);
   } else {
