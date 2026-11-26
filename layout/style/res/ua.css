@@ -462,6 +462,12 @@ parsererror|sourcetext {
   direction: ltr;
 }
 
+.moz-custom-content-container.moz-print:-moz-native-anonymous {
+  -moz-top-layer: none;
+  position: fixed;
+  z-index: 2147483647;
+}
+
 /* https://drafts.csswg.org/css-view-transitions-1/#ua-styles */
 
 /* :root section moved to the other root selectors for performance */

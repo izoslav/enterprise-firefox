@@ -21,10 +21,12 @@ class AnonymousContent final {
   NS_INLINE_DECL_CYCLE_COLLECTING_NATIVE_REFCOUNTING(AnonymousContent)
   NS_DECL_CYCLE_COLLECTION_NATIVE_CLASS(AnonymousContent)
 
-  static already_AddRefed<AnonymousContent> Create(Document&);
+  static already_AddRefed<AnonymousContent> Create(Document&,
+                                                   bool aIncludeInStaticClones);
 
   Element* Host() const { return mHost.get(); }
   ShadowRoot* Root() const { return mRoot.get(); }
+  bool IsIncludedInStaticClones() const { return mIncludeInStaticClones; }
 
   bool WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto,
                   JS::MutableHandle<JSObject*> aReflector);
@@ -33,9 +35,11 @@ class AnonymousContent final {
   ~AnonymousContent();
 
   explicit AnonymousContent(already_AddRefed<Element> aHost,
-                            already_AddRefed<ShadowRoot> aRoot);
+                            already_AddRefed<ShadowRoot> aRoot,
+                            bool aIncludeInStaticClones);
   RefPtr<Element> mHost;
   RefPtr<ShadowRoot> mRoot;
+  bool mIncludeInStaticClones;
 };
 
 }  // namespace mozilla::dom

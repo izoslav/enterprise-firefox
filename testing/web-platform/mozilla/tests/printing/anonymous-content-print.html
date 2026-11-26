@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html class="reftest-wait">
+	<head>
+		<link rel="author" title="Marcin Kołodziej" href="mailto:mkolodziej@mozilla.com">
+		<link rel="match" href="reference/anonymous-content.html">
+		<script>
+			window.onload = () => {
+				const target = document.getElementById("target");
+				const chromeDocument = SpecialPowers.wrap(document);
+
+				function addOverlay(text, includeInStaticClones) {
+					const overlay = target.cloneNode(false);
+					overlay.removeAttribute("id");
+					overlay.textContent = text;
+					chromeDocument.insertAnonymousContent({ includeInStaticClones }).root.appendChild(overlay);
+				}
+
+				addOverlay("Printable", true);
+				addOverlay("Hidden", false);
+
+				document.documentElement.classList.remove("reftest-wait");
+			};
+		</script>
+	</head>
+	<body>
+		<div id="target"></div>
+	</body>
+</html>
